@@ -1,5 +1,6 @@
 /* prettier-ignore */
-exports.BASE_URL = process.env.NODE_ENV === `development` ? `http://localhost:8888` : process.env.BASE_URL;
+// exports.BASE_URL = process.env.NODE_ENV === `development` ? `http://localhost:8888` : process.env.BASE_URL;
+exports.BASE_URL = process.env.BASE_URL;
 
 exports.COOKIE_SECURE = process.env.NODE_ENV !== `development`;
 /* prettier-ignore */
