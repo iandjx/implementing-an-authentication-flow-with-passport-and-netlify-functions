@@ -10,6 +10,7 @@
 *.vi
 *.zip
 *~
+*.env
 
 # OS or Editor folders
 ._*
@@ -28,3 +29,6 @@ Thumbs.db
 # Folders to ignore
 dist/*
 node_modules
+
+# Local Netlify folder
+.netlify
