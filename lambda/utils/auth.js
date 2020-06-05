@@ -8,12 +8,16 @@ const {
   ENDPOINT,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
-  SECRET,
+  // eslint-disable-next-line comma-dangle
+  SECRET
 } = require(`./config`);
 
 function authJwt(email) {
   return sign({ user: { email } }, SECRET);
 }
+
+// eslint-disable-next-line no-console
+console.log(`${BASE_URL}${ENDPOINT}/auth/github/callback`);
 
 passport.use(
   new GitHubStrategy(
@@ -21,7 +25,8 @@ passport.use(
       clientID: GITHUB_CLIENT_ID,
       clientSecret: GITHUB_CLIENT_SECRET,
       callbackURL: `${BASE_URL}${ENDPOINT}/auth/github/callback`,
-      scope: [`user:email`],
+      // eslint-disable-next-line comma-dangle
+      scope: [`user:email`]
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -34,27 +39,29 @@ passport.use(
       } catch (error) {
         return done(error);
       }
-    },
-  ),
+    }
+  )
 );
 
 passport.use(
-  new passportJwt.Strategy({
-    jwtFromRequest(req) {
-      if (!req.cookies) throw new Error(`Missing cookie-parser middleware`);
-      return req.cookies.jwt;
+  new passportJwt.Strategy(
+    {
+      jwtFromRequest(req) {
+        if (!req.cookies) throw new Error(`Missing cookie-parser middleware`);
+        return req.cookies.jwt;
+      },
+      secretOrKey: SECRET
     },
-    secretOrKey: SECRET,
-  },
-  async ({ user: { email } }, done) => {
-    try {
-      // Here you'd typically load an existing user
-      // and use their data to create the JWT.
-      const jwt = authJwt(email);
+    async ({ user: { email } }, done) => {
+      try {
+        // Here you'd typically load an existing user
+        // and use their data to create the JWT.
+        const jwt = authJwt(email);
 
-      return done(null, { email, jwt });
-    } catch (error) {
-      return done(error);
+        return done(null, { email, jwt });
+      } catch (error) {
+        return done(error);
+      }
     }
-  }),
+  )
 );
