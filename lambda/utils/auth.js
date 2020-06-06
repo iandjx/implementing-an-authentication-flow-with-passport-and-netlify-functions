@@ -2,18 +2,21 @@ const { sign } = require(`jsonwebtoken`);
 const { Strategy: GitHubStrategy } = require(`passport-github2`);
 const passport = require(`passport`);
 const passportJwt = require(`passport-jwt`);
+require(`isomorphic-fetch`);
 
 const {
   BASE_URL,
   ENDPOINT,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
+  SECRET,
+  HASURA_ENDPOINT,
   // eslint-disable-next-line comma-dangle
-  SECRET
+  HASURA_SECRET
 } = require(`./config`);
 
-function authJwt(email) {
-  return sign({ user: { email } }, SECRET);
+function authJwt(id) {
+  return sign({ user: { id } }, HASURA_SECRET);
 }
 
 // eslint-disable-next-line no-console
@@ -29,16 +32,131 @@ passport.use(
       scope: [`user:email`]
     },
     async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0].value;
-        // Here you'd typically create a new or load an existing user and
-        // store the bare necessary informations about the user in the JWT.
-        const jwt = authJwt(email);
+      fetch("https://hasura-jwt-oauth-prac.herokuapp.com/v1/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-hasura-admin-secret": `${process.env.HASURA_SECRET}`
+        },
+        body: JSON.stringify({
+          query: `query {
+          users(where: {github_user_id: {_eq: ${profile.id}}}) {
+            access_token
+            bio
+            github_user_id
+            id
+            name
+            public_gists
+            public_repos
+            refresh_token
+          }
+        }
+        `
+        })
+      })
+        // eslint-disable-next-line arrow-parens
+        .then(res => res.json())
+        .then(res => {
+          if (res.data.users[0] !== undefined) {
+            const claims = {
+              sub: "" + res.data.users[0].id,
+              "https://hasura.io/jwt/claims": {
+                "x-hasura-default-role": "admin",
+                "x-hasura-user-id": "" + res.data.users[0].id,
+                "x-hasura-allowed-roles": ["admin", "user"]
+              }
+            };
 
-        return done(null, { email, jwt });
-      } catch (error) {
-        return done(error);
-      }
+            const jwt = authJwt(claims);
+            const user = {
+              id: res.data.users[0].id,
+              userName: res.data.users[0].name
+            };
+
+            // req.user = user;
+            console.log("jwt " + jwt);
+            console.log("user" + user);
+            const id = user.id;
+            return done(null, { id, jwt });
+          } else {
+            var newUser;
+            const query = `mutation (
+              $github_user_id: Int!
+              $name: String!
+              $bio: String
+              $pubic_repos: Int!
+              $public_gists: Int!
+              $access_token: String
+              $refresh_token: String
+            ) {
+              insert_users(objects: {
+              name: $name, 
+              public_gists: $public_gists, 
+              public_repos: $pubic_repos, 
+              refresh_token: $refresh_token, 
+              github_user_id: $github_user_id, 
+              bio: $bio, 
+              access_token: $access_token}) {
+                returning {
+                  access_token
+                  bio
+                  github_user_id
+                  id
+                  name
+                  public_gists
+                  public_repos
+                  refresh_token
+                }
+              }
+            }
+             `;
+            const variables = {
+              github_user_id: profile._json.id,
+              name: profile._json.name,
+              bio: profile._json.bio,
+              pubic_repos: profile._json.public_repos,
+              public_gists: profile._json.public_gists,
+              access_token: accessToken,
+              refresh_token: refreshToken
+            };
+            fetch("https://hasura-jwt-oauth-prac.herokuapp.com/v1/graphql", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-hasura-admin-secret": "i30LbO4dZlwjW95R8cP+D8hZ2OktZSMN"
+              },
+              body: JSON.stringify({
+                query,
+                variables
+              })
+            })
+              .then(res => res.json())
+              .then(res => {
+                console.log(res.data.insert_users);
+
+                const claims = {
+                  sub: "" + res.data.insert_users.returning[0].id,
+                  "https://hasura.io/jwt/claims": {
+                    "x-hasura-default-role": "admin",
+                    "x-hasura-user-id":
+                      "" + res.data.insert_users.returning[0].id,
+                    "x-hasura-allowed-roles": ["admin", "user"]
+                  }
+                };
+                const jwt = authJwt(claims);
+                const user = {
+                  id: res.data.insert_users.returning[0].id,
+                  userName: res.data.insert_users.returning[0].name
+                };
+
+                // req.user = user;
+                console.log("jwt " + jwt);
+                console.log("user" + user);
+                const id = user.id;
+                return done(null, { id, jwt });
+              });
+          }
+        });
     }
   )
 );
@@ -50,15 +168,15 @@ passport.use(
         if (!req.cookies) throw new Error(`Missing cookie-parser middleware`);
         return req.cookies.jwt;
       },
-      secretOrKey: SECRET
+      secretOrKey: HASURA_SECRET
     },
-    async ({ user: { email } }, done) => {
+    async ({ user: { id } }, done) => {
       try {
         // Here you'd typically load an existing user
         // and use their data to create the JWT.
-        const jwt = authJwt(email);
+        const jwt = authJwt(id);
 
-        return done(null, { email, jwt });
+        return done(null, { id, jwt });
       } catch (error) {
         return done(error);
       }

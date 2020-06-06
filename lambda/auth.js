@@ -6,10 +6,7 @@ const serverless = require(`serverless-http`);
 
 require(`./utils/auth`);
 
-const {
-  COOKIE_SECURE,
-  ENDPOINT,
-} = require(`./utils/config`);
+const { COOKIE_SECURE, ENDPOINT } = require(`./utils/config`);
 
 const app = express();
 
@@ -24,17 +21,20 @@ const handleCallback = () => (req, res) => {
     .redirect(`/`);
 };
 
-app.get(`${ENDPOINT}/auth/github`, passport.authenticate(`github`, { session: false }));
+app.get(
+  `${ENDPOINT}/auth/github`,
+  passport.authenticate(`github`, { session: false })
+);
 app.get(
   `${ENDPOINT}/auth/github/callback`,
   passport.authenticate(`github`, { failureRedirect: `/`, session: false }),
-  handleCallback(),
+  handleCallback()
 );
 
 app.get(
   `${ENDPOINT}/auth/status`,
   passport.authenticate(`jwt`, { session: false }),
-  (req, res) => res.json({ email: req.user.email }),
+  (req, res) => res.json({ id: req.user.id })
 );
 
 module.exports.handler = serverless(app);

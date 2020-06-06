@@ -8,7 +8,7 @@
     </h1>
     <p>
       <template v-if="user">
-        Hello {{ user }}!<br>
+        Hello {{ user }}!<br />
         <small>(Clear your cookies if you want to try again.)</small>
       </template>
       <template v-else>
@@ -27,8 +27,8 @@ async function quickFetch(endpoint) {
     const response = await fetch(endpoint, {
       credentials: `include`,
       headers: {
-        'Content-Type': `application/json`,
-      },
+        "Content-Type": `application/json`
+      }
     });
     data = await response.json();
   } catch (error) {
@@ -41,34 +41,33 @@ export default {
   name: `App`,
   data() {
     return {
-      user: false,
+      user: false
     };
   },
   async created() {
-    this.endpoint = process.env.NODE_ENV === `development`
-      ? `/.netlify/functions`
-      : `/api`;
+    this.endpoint =
+      process.env.NODE_ENV === `development` ? `/.netlify/functions` : `/api`;
 
     const status = await quickFetch(`${this.endpoint}/auth/status`);
-    this.user = status.email;
-  },
+    this.user = status.id;
+  }
 };
 </script>
 
 <style lang="scss">
-@import './assets/scss/generic/**/*';
-@import '{
+@import "./assets/scss/generic/**/*";
+@import "{
   .o-container,
   .o-container--m,
-} from ~@avalanche/object-container';
-@import '{
+} from ~@avalanche/object-container";
+@import "{
   .o-vertical-spacing,
   .o-vertical-spacing--xxl,
-} from ~@avalanche/object-vertical-spacing';
+} from ~@avalanche/object-vertical-spacing";
 </style>
 
 <style lang="scss" module>
-@import './assets/scss/settings/**/*';
+@import "./assets/scss/settings/**/*";
 
 .main {
   padding-top: setting-spacing(xl);
